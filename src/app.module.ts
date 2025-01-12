@@ -55,6 +55,7 @@ import { winstonConfig } from './common/logger/winston.config';
     AuthModule,
     UsersModule,
     BlogsModule,
+    //HealthModule,
   ],
 })
 export class AppModule {}

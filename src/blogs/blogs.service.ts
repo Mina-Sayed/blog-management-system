@@ -42,9 +42,8 @@ export class BlogsService {
   ): Promise<BlogListResponse> {
     try {
       const cacheKey = `blogs_page${page}_limit${limit}_tags${tags?.join(',') || 'none'}`;
-      const cachedData =
-        await this.cacheManager.get<BlogListResponse>(cacheKey);
-
+      const cachedData = await this.cacheManager.get<BlogListResponse>(cacheKey);
+      
       if (cachedData) {
         this.logger.debug(`Returning cached data for ${cacheKey}`);
         return cachedData;
@@ -57,17 +56,15 @@ export class BlogsService {
         .take(limit);
 
       if (tags && tags.length > 0) {
-        const trimmedTags = tags.map((tag) => tag.trim());
-        queryBuilder.where('blog.tags @> ARRAY[:...tags]::text[]', {
-          tags: trimmedTags,
-        });
+        const trimmedTags = tags.map(tag => tag.trim());
+        queryBuilder.where('blog.tags @> ARRAY[:...tags]::text[]', { tags: trimmedTags });
       }
 
       const [blogs, total] = await queryBuilder.getManyAndCount();
-
+      
       const result = { data: blogs, total };
       await this.cacheManager.set(cacheKey, result, 300000); // Cache for 5 minutes
-
+      
       return result;
     } catch (error) {
       this.logger.error(`Error fetching blogs: ${error.message}`, error.stack);
