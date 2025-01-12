@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
-import * as redisStore from 'cache-manager-redis-store';
-import { Blog } from './entities/blog.entity';
+import { redisStore } from 'cache-manager-redis-yet';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BlogsService } from './blogs.service';
 import { BlogsController } from './blogs.controller';
+import { Blog } from './entities/blog.entity';
 
 @Module({
   imports: [
@@ -13,15 +13,21 @@ import { BlogsController } from './blogs.controller';
     CacheModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        store: redisStore,
-        host: configService.get('REDIS_HOST', 'localhost'),
-        port: configService.get('REDIS_PORT', 6379),
-        ttl: 60 * 60, // 1 hour
+        store: await redisStore({
+          url: configService.get('REDIS_URL'),
+          socket: {
+            host: configService.get('REDIS_HOST'),
+            port: configService.get('REDIS_PORT'),
+          },
+          username: configService.get('REDIS_USERNAME'),
+          password: configService.get('REDIS_PASSWORD'),
+        }),
+        ttl: 300, // 5 minutes
       }),
       inject: [ConfigService],
     }),
   ],
-  providers: [BlogsService],
   controllers: [BlogsController],
+  providers: [BlogsService],
 })
 export class BlogsModule {}

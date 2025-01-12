@@ -4,19 +4,21 @@ A robust RESTful API built with NestJS for managing blog posts with user authent
 
 ## Features
 
-### Core Functionality
+### Core Features
 - User authentication with JWT
-- Role-based access control (Admin/Editor)
-- Blog post CRUD operations
-- Pagination and tag-based filtering
+- Role-based access control (Admin, Editor)
+- Blog post management with tags
+- PostgreSQL database with TypeORM
 - Swagger API documentation
 
 ### Advanced Features
 - Redis caching for improved performance
-- Rate limiting protection
+- Rate limiting for API protection
 - Winston logging system
-- Health checks monitoring
-- Docker containerization
+- Health checks
+- Docker support
+- Database hosted on Neon (Serverless PostgreSQL)
+- Redis hosted on Railway
 
 ## Tech Stack
 
@@ -28,6 +30,7 @@ A robust RESTful API built with NestJS for managing blog posts with user authent
 - **Documentation**: Swagger/OpenAPI
 - **Containerization**: Docker & Docker Compose
 - **Testing**: Jest
+- **Winston Logger** 
 
 ## Prerequisites
 
@@ -53,7 +56,38 @@ pnpm install
 3. Set up environment variables:
 ```bash
 cp .env.example .env
-# Edit .env with your configuration
+```
+
+Configure the following in your `.env`:
+```env
+# Application
+PORT=3000
+NODE_ENV=development
+
+# Database
+DB_HOST=your-neon-host
+DB_PORT=5432
+DB_USERNAME=your-username
+DB_PASSWORD=your-password
+DB_DATABASE=your-database
+DB_SSL=true
+
+# Redis
+REDIS_URL=your-redis-url
+REDIS_HOST=redis.railway.internal
+REDIS_PORT=6379
+REDIS_PASSWORD=your-redis-password
+REDIS_USERNAME=default
+
+# JWT
+JWT_SECRET=your-secret-key
+JWT_EXPIRATION=1h
+
+# Swagger
+SWAGGER_TITLE=Blog Management API
+SWAGGER_DESCRIPTION=API documentation
+SWAGGER_VERSION=1.0
+SWAGGER_PATH=api
 ```
 
 ## Running the Application
@@ -69,8 +103,13 @@ pnpm run start:dev
 
 ### Production
 ```bash
-# Build and start all services
-docker-compose up -d
+pnpm run build
+pnpm run start:prod
+```
+
+### Docker
+```bash
+docker compose up -d
 ```
 
 ## API Documentation
@@ -80,36 +119,44 @@ Once the application is running, access the Swagger documentation at:
 http://localhost:3000/api
 ```
 
-### Available Endpoints
+### Main Endpoints
 
 #### Authentication
-- POST /auth/register - Register new user
-- POST /auth/login - User login
+- POST `/auth/register` - Register new user
+- POST `/auth/login` - Login and get JWT token
 
 #### Blog Posts
-- GET /blogs - List all blogs (with pagination & filtering)
-- GET /blogs/:id - Get single blog
-- POST /blogs - Create new blog (Auth required)
-- PUT /blogs/:id - Update blog (Auth required)
-- DELETE /blogs/:id - Delete blog (Auth required)
-
-#### Users
-- GET /users/:id - Get user details (Admin only)
-
-## Rate Limiting
-
-- 100 requests per 15 minutes window
-- Per IP and endpoint tracking
-- Applied to authentication endpoints
+- GET `/blogs` - Get all blog posts (with pagination and tag filtering)
+- GET `/blogs/:id` - Get specific blog post
+- POST `/blogs` - Create blog post (Admin/Editor)
+- PUT `/blogs/:id` - Update blog post (Admin/Editor)
+- DELETE `/blogs/:id` - Delete blog post (Admin)
 
 ## Caching Strategy
+- Redis cache implemented for blog posts
+- Cache TTL: 5 minutes
+- Automatic cache invalidation on blog updates
+- Hosted on Railway for production
 
-- Blog posts cached for 5 minutes
-- Automatic cache invalidation on updates
-- Redis used as caching store
+## Rate Limiting
+- 100 requests per 15 minutes per IP
+- Applies to authentication endpoints
+- Redis-based rate limiting storage
+
+## Database
+- Hosted on Neon (Serverless PostgreSQL)
+- SSL enabled
+- Automatic migrations in production
+- TypeORM for database management
+
+## Deployment
+Currently deployed on Railway with:
+- Automatic deployments from main branch
+- PostgreSQL database on Neon
+- Redis instance on Railway
+- Environment variables managed through Railway dashboard
 
 ## Testing
-
 ```bash
 # Unit tests
 pnpm run test
@@ -121,58 +168,4 @@ pnpm run test:e2e
 pnpm run test:cov
 ```
 
-## Health Checks
 
-Monitor application health at:
-```
-http://localhost:3000/health
-```
-
-## Docker Support
-
-Build and run with Docker:
-```bash
-# Build image
-docker build -t blog-management-system .
-
-# Run container
-docker run -p 3000:3000 blog-management-system
-```
-
-Or using Docker Compose:
-```bash
-docker-compose up -d
-```
-
-## Environment Variables
-
-```env
-# Application
-PORT=3000
-NODE_ENV=development
-
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_DATABASE=blog_management
-
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# JWT
-JWT_SECRET=your-super-secret-key-here
-JWT_EXPIRATION=1h
-
-# Swagger
-SWAGGER_TITLE=Blog Management API
-SWAGGER_DESCRIPTION=API documentation for Blog Management System
-SWAGGER_VERSION=1.0
-SWAGGER_PATH=api
-```
-
-## License
-
-This project is MIT licensed.

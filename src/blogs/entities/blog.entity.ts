@@ -23,8 +23,8 @@ export class Blog {
   @ApiProperty()
   content: string;
 
-  @Column('simple-array')
-  @ApiProperty()
+  @Column('text', { array: true, default: [] })
+  @ApiProperty({ type: [String] })
   tags: string[];
 
   @ManyToOne(() => User, { eager: true })

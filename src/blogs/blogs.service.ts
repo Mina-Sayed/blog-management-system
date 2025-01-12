@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Blog } from './entities/blog.entity';
@@ -16,6 +17,8 @@ import { BlogListResponse } from './types/blog-list.response';
 
 @Injectable()
 export class BlogsService {
+  private readonly logger = new Logger(BlogsService.name);
+
   constructor(
     @InjectRepository(Blog)
     private blogsRepository: Repository<Blog>,
@@ -37,29 +40,39 @@ export class BlogsService {
     limit = 10,
     tags?: string[],
   ): Promise<BlogListResponse> {
-    const cacheKey = `blogs_list_${page}_${limit}_${tags?.join('_')}`;
-    const cachedData = await this.cacheManager.get<BlogListResponse>(cacheKey);
+    try {
+      const cacheKey = `blogs_page${page}_limit${limit}_tags${tags?.join(',') || 'none'}`;
+      const cachedData =
+        await this.cacheManager.get<BlogListResponse>(cacheKey);
 
-    if (cachedData) {
-      return cachedData;
+      if (cachedData) {
+        this.logger.debug(`Returning cached data for ${cacheKey}`);
+        return cachedData;
+      }
+
+      const queryBuilder = this.blogsRepository
+        .createQueryBuilder('blog')
+        .leftJoinAndSelect('blog.author', 'author')
+        .skip((page - 1) * limit)
+        .take(limit);
+
+      if (tags && tags.length > 0) {
+        const trimmedTags = tags.map((tag) => tag.trim());
+        queryBuilder.where('blog.tags @> ARRAY[:...tags]::text[]', {
+          tags: trimmedTags,
+        });
+      }
+
+      const [blogs, total] = await queryBuilder.getManyAndCount();
+
+      const result = { data: blogs, total };
+      await this.cacheManager.set(cacheKey, result, 300000); // Cache for 5 minutes
+
+      return result;
+    } catch (error) {
+      this.logger.error(`Error fetching blogs: ${error.message}`, error.stack);
+      throw error;
     }
-
-    const queryBuilder = this.blogsRepository
-      .createQueryBuilder('blog')
-      .leftJoinAndSelect('blog.author', 'author')
-      .orderBy('blog.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
-
-    if (tags?.length) {
-      queryBuilder.where('blog.tags && :tags', { tags });
-    }
-
-    const [blogs, total] = await queryBuilder.getManyAndCount();
-    const result: BlogListResponse = { data: blogs, total };
-
-    await this.cacheManager.set(cacheKey, result, 60 * 5); // Cache for 5 minutes
-    return result;
   }
 
   async findOne(id: string): Promise<Blog> {
