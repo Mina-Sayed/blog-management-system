@@ -1,24 +1,25 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { WinstonModule } from 'nest-winston';
-import { winstonConfig } from './common/logger/winston.config';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import helmet from 'helmet';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    logger: WinstonModule.createLogger(winstonConfig),
-  });
+  const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  const logger = app.get(WINSTON_MODULE_PROVIDER);
 
   // Security
   app.use(helmet());
   app.enableCors();
 
   // Global filters and pipes
+  app.useGlobalFilters(new AllExceptionsFilter(logger));
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({

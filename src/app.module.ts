@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TerminusModule } from '@nestjs/terminus';
+import { CacheModule } from '@nestjs/cache-manager';
+import { WinstonModule } from 'nest-winston';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { BlogsModule } from './blogs/blogs.module';
-import { HealthController } from './health/health.controller';
+import { winstonConfig } from './common/logger/winston.config';
 
 @Module({
   imports: [
@@ -22,15 +23,18 @@ import { HealthController } from './health/health.controller';
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get('NODE_ENV') === 'development',
+        synchronize: configService.get('NODE_ENV') !== 'production',
       }),
       inject: [ConfigService],
     }),
-    TerminusModule,
+    CacheModule.register({
+      isGlobal: true,
+    }),
+    WinstonModule.forRoot(winstonConfig),
     AuthModule,
     UsersModule,
     BlogsModule,
+    //HealthModule,
   ],
-  controllers: [HealthController],
 })
 export class AppModule {}

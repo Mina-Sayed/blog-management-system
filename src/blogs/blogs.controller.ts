@@ -9,13 +9,14 @@ import {
   Query,
   UseGuards,
   Request,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  getSchemaPath,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { BlogsService } from './blogs.service';
 import { Blog } from './entities/blog.entity';
@@ -25,6 +26,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { CreateBlogDto } from './dto/create-blog.dto';
 import { UpdateBlogDto } from './dto/update-blog.dto';
+import { BlogListResponse } from './types/blog-list.response';
 
 @ApiTags('blogs')
 @Controller('blogs')
@@ -53,24 +55,17 @@ export class BlogsController {
   @ApiResponse({
     status: 200,
     description: 'Return all blog posts.',
-    schema: {
-      properties: {
-        data: {
-          type: 'array',
-          items: { $ref: getSchemaPath(Blog) },
-        },
-        total: {
-          type: 'number',
-        },
-      },
-    },
+    type: BlogListResponse,
   })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'tags', required: false, type: [String], isArray: true })
   async findAll(
     @Query('page') page = 1,
     @Query('limit') limit = 10,
-    @Query('tags') tags?: string[],
-  ) {
-    return this.blogsService.findAll(page, limit, tags);
+    @Query('tags', new ParseArrayPipe({ optional: true })) tags?: string[],
+  ): Promise<BlogListResponse> {
+    return this.blogsService.findAll(+page, +limit, tags);
   }
 
   @Get(':id')
